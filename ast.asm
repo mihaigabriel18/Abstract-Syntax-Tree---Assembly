@@ -6,6 +6,7 @@ section .bss
     root resd 1
     currentNode resd 1
     isOperator resd 1
+    isNegativeAtoi resd 1
 
 section .text
 
@@ -26,6 +27,15 @@ iocla_atoi:             ;change string to number
     xor ecx, ecx  ;stores the result
     xor ebx, ebx  ;stores character
 
+    mov edx, 0
+    mov [isNegativeAtoi], edx   ;the default way is that the number is positive
+    ;we check to see if the number is negative or not
+    mov bl, [eax]
+    cmp bl, '-'   ;compare to minus character
+    jnz atoi_loop ;if it is not a minus sign just do the rest as usual
+    mov edx, 1
+    mov [isNegativeAtoi], edx   ;change global variable
+
 atoi_loop:
     mov bl, [eax] ;get the character
     test bl, bl   ;check if we reached the end
@@ -42,7 +52,16 @@ atoi_loop:
 
 end_of_atoi:
 
-    mov eax, ecx    ;return value
+    ;checking to see if the number was negative or not
+    mov eax, ecx
+    mov edx, [isNegativeAtoi]
+    cmp edx, 0
+    jz is_positive_number
+    ;we do the next only of the number is negative
+    mov eax, 0
+    sub eax, ecx
+is_positive_number:
+
     pop edx
     pop ecx
     pop ebx
@@ -84,12 +103,13 @@ check_if_operator:          ;check is the symbol given parameter is an operator
                             ;(+,-,*,/), store the information in "isOperator"
     enter 0, 0
 
-    mov cl, [ebp + 8]
-    ;PRINTF32 `OPERATOR:%c:OPERATOR\n\x0`,ecx
+    mov eax, [ebp + 8]      ;puttin into ecx the string
+    mov cl, [eax]           ;putting into cl the first character of the string
+
     cmp cl, '+'
     jz is_an_operator
     cmp cl, '-'
-    jz is_an_operator
+    jz is_a_minus           ;it could either a operator or a negative number
     cmp cl, '*'
     jz is_an_operator
     cmp cl, '/'
@@ -98,11 +118,21 @@ check_if_operator:          ;check is the symbol given parameter is an operator
     mov [isOperator], ebx
     jmp end                
 
+is_a_minus:
+    mov cl, [eax + 0x1]     ;get the second character
+    cmp cl, 0               ;if the next char is '\0' is an operator
+    jz is_an_operator
+    mov ebx, 0x0            ; it is not an operator
+    mov [isOperator], ebx
+    jmp end
+
 is_an_operator:
+    ;PRINTF32 `OPERATOR:%c:OPERATOR\n\x0`,ecx
     mov ebx, 0x1
     mov [isOperator], ebx
     
 end:
+
     leave
     ret
 
@@ -151,6 +181,12 @@ traverse_token:
 
     ;PRINTF32 `DA:%s:DA\n\x0`,edx
 
+    ;push ecx
+    ;mov ecx, [currentNode]
+    ;mov ecx, [ecx]
+    ;PRINTF32 `INLINE:%s:INLINE\n\x0`,ecx
+    ;pop ecx
+
     push ebx            ;saving ebx register
     push ecx            ;saving ecx register
     push edx            ;saving edx register
@@ -164,7 +200,7 @@ traverse_token:
     push eax            ;saving eax register
     push ebx            ;saving ebx register
     push ecx            ;saving ecx register (nu e neaparat momentan)
-    push ebx            ;pushing parameter
+    push edx            ;pushing parameter
     call check_if_operator
     add esp, 0x4        ;removing parameter
     pop ecx             ;restoring ecx register
@@ -184,7 +220,7 @@ things_to_do_if_operator:
     mov ecx, [currentNode]  ;move to ecx the node
     mov ecx, [ecx + 0x4]    ;move to ecx the left node address
     cmp ecx, 0x0            ;check if it si null
-    jz add_to_left
+    jz add_to_left_operator
     jmp add_to_right_operator
     ; DONE
 
@@ -197,12 +233,13 @@ things_to_do_if_not_operator:
     cmp ecx, 0x0            ;check if it si null
     jz add_to_left_value
     jmp add_to_right_value
+    ; DONE
 
 end_of_operator_actions:
 
     jmp traverse_token  ;iterate for next character
 
-add_to_left:
+add_to_left_operator:
     mov ecx, [currentNode]          ;move to ecx the node
     mov [ecx + 0x4], eax            ;left value is updated
     mov [currentNode], eax  ;currentNode is updated to the inserted value
@@ -219,12 +256,24 @@ add_to_left_value:
     mov [ecx + 0x4], eax            ;left value is updated
     jmp end_of_operator_actions ;TBDT
 
-add_to_right_value:     ;adding to the right for integer values
+add_to_right_value:         ;adding to the right for integer values
     mov ecx, [currentNode]  ;move to ecx the node
     mov [ecx + 0x8], eax    ;right value is updated
+
+    ;now currentNode becomes the value in the stack that has a free right spot
+    ;we are going to check for ecx, and when we find the value, we stop
+loop_for_currentNode:
     pop ecx                 ;pop the parrent node of value
-    mov ecx, [esp + 0x4]    ;mov to ecx the future currentNode without poping
+    mov ecx, [esp]          ;mov to ecx the future currentNode without poping
     mov [currentNode], ecx  ;update currentNode to future currentNode
+    ;now we test to see if currentNode(ecx) has a free right
+    mov ecx, [ecx + 0x8]    ;move to ecx the right value
+    cmp ecx , 0x0           ;check if right tree is null
+    jz we_have_found_currNode
+    jmp loop_for_currentNode
+
+we_have_found_currNode:
+        
     jmp end_of_operator_actions ;TBDT
 
 reached_end_token:  
@@ -241,6 +290,15 @@ loop_for_poping_remaining_nodes:
 very_end:
     mov eax, [root]     ;put in eax the root
     
+    ;mov ecx, [eax + 0x8]  ; left of "+"
+    ;mov ecx, [ecx + 0x4]  ; right of "*"
+    ;mov ecx, [ecx + 4]  ; right of "/"
+    ;mov ecx, [ecx + 4]
+    ;mov ecx, [ecx]      ; 
+    
+
+    ;PRINTF32 `SFARSIT:%s:SFARSIT\n\x0`,ecx
+
     pop edx
     pop ecx
     pop ebx
