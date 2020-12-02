@@ -35,6 +35,7 @@ iocla_atoi:             ;change string to number
     jnz atoi_loop ;if it is not a minus sign just do the rest as usual
     mov edx, 1
     mov [isNegativeAtoi], edx   ;change global variable
+    inc eax                     ;get rid of the minus
 
 atoi_loop:
     mov bl, [eax] ;get the character
@@ -296,9 +297,13 @@ very_end:
     ;mov ecx, [ecx + 4]
     ;mov ecx, [ecx]      ; 
     
-
-    ;PRINTF32 `SFARSIT:%s:SFARSIT\n\x0`,ecx
-
+    ;push eax
+    ;push ecx
+    ;call iocla_atoi
+    ;PRINTF32 `SFARSIT:%d:SFARSIT\n\x0`,eax
+    ;add esp, 0x4
+    ;pop eax
+    
     pop edx
     pop ecx
     pop ebx
