@@ -1,4 +1,3 @@
-%include "utils/printf32.asm"
 section .data
     delim db " ", 0
 
@@ -12,7 +11,6 @@ section .text
 
 extern evaluate_ast
 extern create_node
-extern printf
 global create_tree
 global iocla_atoi
 
@@ -31,21 +29,17 @@ iocla_atoi:             ;change string to number
     mov [isNegativeAtoi], edx   ;the default way is that the number is positive
     ;we check to see if the number is negative or not
     mov bl, [eax]
-    cmp bl, '-'   ;compare to minus character
-    jnz atoi_loop ;if it is not a minus sign just do the rest as usual
+    cmp bl, '-'                 ;compare to minus character
+    jnz atoi_loop          ;if it is not a minus sign just do the rest as usual
     mov edx, 1
     mov [isNegativeAtoi], edx   ;change global variable
     inc eax                     ;get rid of the minus
 
 atoi_loop:
-    mov bl, [eax] ;get the character
-    test bl, bl   ;check if we reached the end
+    mov bl, [eax]               ;get the character
+    test bl, bl                 ;check if we reached the end
     jz end_of_atoi
-    cmp bl, ' '
-    jz end_of_atoi
-    cmp bl, 10
-    jz end_of_atoi
-    imul ecx, 0xa ;multiply ecx by 10
+    imul ecx, 0xa               ;multiply ecx by 10
     sub bl, '0'
     add ecx, ebx
     inc eax
@@ -128,7 +122,6 @@ is_a_minus:
     jmp end
 
 is_an_operator:
-    ;PRINTF32 `OPERATOR:%c:OPERATOR\n\x0`,ecx
     mov ebx, 0x1
     mov [isOperator], ebx
     
@@ -155,8 +148,6 @@ create_tree:
     pop ecx             ;restoring ecx register
     pop eax             ;restoring eax register
 
-    ;PRINTF32 `DA:%s:DA\n\x0`,edx
-
     ;initializing root Node
     push edx            ;pushing parameter
     call create_node
@@ -179,14 +170,6 @@ traverse_token:
     add esp, 0x4        ;removing paramter
     pop ecx             ;restoring ecx register
     pop eax             ;restoring eax register
-
-    ;PRINTF32 `DA:%s:DA\n\x0`,edx
-
-    ;push ecx
-    ;mov ecx, [currentNode]
-    ;mov ecx, [ecx]
-    ;PRINTF32 `INLINE:%s:INLINE\n\x0`,ecx
-    ;pop ecx
 
     push ebx            ;saving ebx register
     push ecx            ;saving ecx register
@@ -290,19 +273,6 @@ loop_for_poping_remaining_nodes:
 
 very_end:
     mov eax, [root]     ;put in eax the root
-    
-    ;mov ecx, [eax + 0x8]  ; left of "+"
-    ;mov ecx, [ecx + 0x4]  ; right of "*"
-    ;mov ecx, [ecx + 4]  ; right of "/"
-    ;mov ecx, [ecx + 4]
-    ;mov ecx, [ecx]      ; 
-    
-    ;push eax
-    ;push ecx
-    ;call iocla_atoi
-    ;PRINTF32 `SFARSIT:%d:SFARSIT\n\x0`,eax
-    ;add esp, 0x4
-    ;pop eax
     
     pop edx
     pop ecx
