@@ -3,9 +3,9 @@ section .data
 
 section .bss
     root resd 1
-    currentNode resd 1
-    isOperator resd 1
-    isNegativeAtoi resd 1
+    current_node resd 1
+    is_operator resd 1
+    is_negative_atoi resd 1
 
 section .text
 
@@ -20,21 +20,19 @@ global iocla_atoi
 iocla_atoi:             ;change string to number
     enter 0, 0
     push ebx            ;saving callee registers
-    push ecx
-    push edx
 
     mov eax, [ebp + 8]
     xor ecx, ecx  ;stores the result
     xor ebx, ebx  ;stores character
 
     mov edx, 0
-    mov [isNegativeAtoi], edx   ;the default way is that the number is positive
+    mov [is_negative_atoi], edx   ;the default way is that the number is positive
     ;we check to see if the number is negative or not
     mov bl, [eax]
     cmp bl, '-'                 ;compare to minus character
     jnz atoi_loop          ;if it is not a minus sign just do the rest as usual
     mov edx, 1
-    mov [isNegativeAtoi], edx   ;change global variable
+    mov [is_negative_atoi], edx   ;change global variable
     inc eax                     ;get rid of the minus
 
 atoi_loop:
@@ -51,7 +49,7 @@ end_of_atoi:
 
     ;checking to see if the number was negative or not
     mov eax, ecx
-    mov edx, [isNegativeAtoi]
+    mov edx, [is_negative_atoi]
     cmp edx, 0
     jz is_positive_number
     ;we do the next only of the number is negative
@@ -59,9 +57,7 @@ end_of_atoi:
     sub eax, ecx
 is_positive_number:
 
-    pop edx                 ;restoring callee registers
-    pop ecx
-    pop ebx
+    pop ebx         ;restoring callee registers
     leave
     ret
 
@@ -74,7 +70,7 @@ replace_next_white_char:    ;replaces next space character with '\0'
 
 starting_loop:
     mov cl, [ebx]
-    cmp cl, ' '
+    cmp cl, [delim]
     jz end_of_replacement    ;we have found a space, going to replace it
     cmp cl, 0
     jz last_word_case        ;we have foudn a '\0' char, this is the last word
@@ -96,7 +92,7 @@ end_of_replacement_function:
     ret
 
 check_if_operator:          ;check is the symbol given parameter is an operator
-                            ;(+,-,*,/), store the information in "isOperator"
+                            ;(+,-,*,/), store the information in "is_operator"
     enter 0, 0
     push ebx
 
@@ -112,7 +108,7 @@ check_if_operator:          ;check is the symbol given parameter is an operator
     cmp cl, '/'
     jz is_an_operator
     mov ebx, 0x0            ; it is not an operator
-    mov [isOperator], ebx
+    mov [is_operator], ebx
     jmp end                
 
 is_a_minus:
@@ -120,12 +116,12 @@ is_a_minus:
     cmp cl, 0               ;if the next char is '\0' is an operator
     jz is_an_operator
     mov ebx, 0x0            ; it is not an operator
-    mov [isOperator], ebx
+    mov [is_operator], ebx
     jmp end
 
 is_an_operator:
     mov ebx, 0x1
-    mov [isOperator], ebx
+    mov [is_operator], ebx
     
 end:
 
@@ -136,8 +132,6 @@ end:
 create_tree:
     enter 0, 0
     push ebx            ;saving registers
-    push ecx
-    push edx
 
     mov edx, [ebp + 8]
 
@@ -178,7 +172,7 @@ create_tree:
     pop ebx             ;restoring ebx register
 
     mov [root], eax;    ;initialize the root
-    mov [currentNode], eax  ;initialize the currentNode for the first time
+    mov [current_node], eax  ;initialize the current_node for the first time
     push eax;           ;push first node to stack
 
 traverse_token:
@@ -231,17 +225,17 @@ traverse_token:
     pop ebx             ;restoring ebx register
     pop eax             ;restoring eax register
 
-    mov ecx, [isOperator];
+    mov ecx, [is_operator];
     cmp ecx, 0x1
     je things_to_do_if_operator     ;it is an operator
     jmp things_to_do_if_not_operator ;it is not an operator
 
 things_to_do_if_operator:
     push eax
-    ;now we add the eax node either to the left or right of currentNode
+    ;now we add the eax node either to the left or right of current_node
     ;if left is null, add to left; if left is not null, add to right and change
-    ;currentNode to parrent node
-    mov ecx, [currentNode]  ;move to ecx the node
+    ;current_node to parrent node
+    mov ecx, [current_node]  ;move to ecx the node
     mov ecx, [ecx + 0x4]    ;move to ecx the left node address
     cmp ecx, 0x0            ;check if it si null
     jz add_to_left_operator
@@ -251,8 +245,8 @@ things_to_do_if_operator:
 things_to_do_if_not_operator:
     ;NO need to push eax because integer values are always leafs
     ;we add the eax node either to the left or right, if we add to the right
-    ;the currentNode is updated by poping the stack
-    mov ecx, [currentNode]  ;move to ecx the node
+    ;the current_node is updated by poping the stack
+    mov ecx, [current_node]  ;move to ecx the node
     mov ecx, [ecx + 0x4]    ;move to ecx the left node address
     cmp ecx, 0x0            ;check if it si null
     jz add_to_left_value
@@ -264,37 +258,37 @@ end_of_operator_actions:
     jmp traverse_token  ;iterate for next character
 
 add_to_left_operator:
-    mov ecx, [currentNode]          ;move to ecx the node
+    mov ecx, [current_node]          ;move to ecx the node
     mov [ecx + 0x4], eax            ;left value is updated
-    mov [currentNode], eax  ;currentNode is updated to the inserted value
+    mov [current_node], eax  ;current_node is updated to the inserted value
     jmp end_of_operator_actions ;TBDT
 
 add_to_right_operator:  ;adding to the right for operators
-    mov ecx, [currentNode]  ;move to ecx the node
+    mov ecx, [current_node]  ;move to ecx the node
     mov [ecx + 0x8], eax    ;right value is updated
-    mov [currentNode], eax  ;currentNode is updated to the inserted value
+    mov [current_node], eax  ;current_node is updated to the inserted value
     jmp end_of_operator_actions ;TBDT
 
 add_to_left_value:
-    mov ecx, [currentNode]          ;move to ecx the node
+    mov ecx, [current_node]          ;move to ecx the node
     mov [ecx + 0x4], eax            ;left value is updated
     jmp end_of_operator_actions ;TBDT
 
 add_to_right_value:         ;adding to the right for integer values
-    mov ecx, [currentNode]  ;move to ecx the node
+    mov ecx, [current_node]  ;move to ecx the node
     mov [ecx + 0x8], eax    ;right value is updated
 
-    ;now currentNode becomes the value in the stack that has a free right spot
+    ;now current_node becomes the value in the stack that has a free right spot
     ;we are going to check for ecx, and when we find the value, we stop
-loop_for_currentNode:
+loop_for_current_node:
     pop ecx                 ;pop the parrent node of value
-    mov ecx, [esp]          ;mov to ecx the future currentNode without poping
-    mov [currentNode], ecx  ;update currentNode to future currentNode
-    ;now we test to see if currentNode(ecx) has a free right
+    mov ecx, [esp]          ;mov to ecx the future current_node without poping
+    mov [current_node], ecx  ;update current_node to future current_node
+    ;now we test to see if current_node(ecx) has a free right
     mov ecx, [ecx + 0x8]    ;move to ecx the right value
     cmp ecx , 0x0           ;check if right tree is null
     jz we_have_found_currNode
-    jmp loop_for_currentNode
+    jmp loop_for_current_node
 
 we_have_found_currNode:
         
@@ -302,20 +296,18 @@ we_have_found_currNode:
 
 reached_end_token:  
     ;now we should pop the remaining stack nodes that we have pushed
-    ;we pop everytime into the currentNode and do that until currentNode = ebp
+    ;we pop everytime into the current_node and do that until current_node = ebp
     
 loop_for_poping_remaining_nodes:
     mov ecx, ebp
     sub ecx, esp
-    sub ecx, 0xc
+    sub ecx, 0x4
     jz very_end          ;reached the bottom of the stack, the frame pointer
     add esp, 0x4         ;pop node into ecx (we do nothing with it)
 
 very_end:
     mov eax, [root]     ;put in eax the root
     
-    pop edx             ;restoring registers
-    pop ecx
     pop ebx
     leave
     ret
