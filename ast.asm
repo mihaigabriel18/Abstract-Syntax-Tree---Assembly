@@ -11,13 +11,15 @@ section .text
 
 extern evaluate_ast
 extern create_node
+extern malloc
+extern strdup
 global create_tree
 global iocla_atoi
 
 
 iocla_atoi:             ;change string to number
     enter 0, 0
-    push ebx
+    push ebx            ;saving callee registers
     push ecx
     push edx
 
@@ -57,7 +59,7 @@ end_of_atoi:
     sub eax, ecx
 is_positive_number:
 
-    pop edx
+    pop edx                 ;restoring callee registers
     pop ecx
     pop ebx
     leave
@@ -68,7 +70,6 @@ replace_next_white_char:    ;replaces next space character with '\0'
                             ;returns a pointer to the word after the space, or
                             ;a 0 if this word was the last one (in ebx)
     enter 0, 0
-
     mov ebx, [ebp + 8]      ; the parameter is a string
 
 starting_loop:
@@ -90,13 +91,14 @@ last_word_case:
     mov ebx, 0              ;return 0 in ebx
 
 end_of_replacement_function:
-      
+    
     leave
     ret
 
 check_if_operator:          ;check is the symbol given parameter is an operator
                             ;(+,-,*,/), store the information in "isOperator"
     enter 0, 0
+    push ebx
 
     mov eax, [ebp + 8]      ;puttin into ecx the string
     mov cl, [eax]           ;putting into cl the first character of the string
@@ -127,12 +129,13 @@ is_an_operator:
     
 end:
 
+    pop ebx
     leave
     ret
 
 create_tree:
     enter 0, 0
-    push ebx
+    push ebx            ;saving registers
     push ecx
     push edx
 
@@ -149,9 +152,30 @@ create_tree:
     pop eax             ;restoring eax register
 
     ;initializing root Node
-    push edx            ;pushing parameter
-    call create_node
-    pop edx             ;restore edx and empty parameter pushed to stack
+    push ebx            ;saving ebx register
+    push ecx            ;saving ecx register
+    push edx            ;saving edx register
+
+    push edx            ;save edx register for malloc
+    push 0xc 
+    call malloc         ;allocate space for structure
+    add esp, 0x4
+    pop edx             ;restore edx register from malloc
+    push eax            ;save eax
+
+    push edx
+    call strdup         ;duplicate node value 
+    add esp, 0x4
+    mov edx, eax
+
+    pop eax             ;restore eax with node address
+    mov [eax], edx              ;set value field
+    mov [eax + 0x4], DWORD 0    ;set left to null
+    mov [eax + 0x8], DWORD 0    ;set right to null
+
+    pop edx             ;restoring edx register
+    pop ecx             ;restoring ecx register
+    pop ebx             ;restoring ebx register
 
     mov [root], eax;    ;initialize the root
     mov [currentNode], eax  ;initialize the currentNode for the first time
@@ -171,19 +195,35 @@ traverse_token:
     pop ecx             ;restoring ecx register
     pop eax             ;restoring eax register
 
+    ;create node
     push ebx            ;saving ebx register
     push ecx            ;saving ecx register
     push edx            ;saving edx register
-    push edx            ;pushing parameter
-    call create_node
-    add esp, 0x4        ;removing parameter
+    
+    push edx            ;save edx register for malloc
+    push 0xc 
+    call malloc         ;allocate space for structure
+    add esp, 0x4
+    pop edx             ;restore edx register from malloc
+    push eax            ;save eax
+
+    push edx
+    call strdup         ;duplicate node value 
+    add esp, 0x4
+    mov edx, eax
+
+    pop eax             ;restore eax with node address
+    mov [eax], edx              ;set value field
+    mov [eax + 0x4], DWORD 0    ;set left to null
+    mov [eax + 0x8], DWORD 0    ;set right to null
+
     pop edx             ;restoring edx register
     pop ecx             ;restoring ecx register
     pop ebx             ;restoring ebx register 
     
     push eax            ;saving eax register
     push ebx            ;saving ebx register
-    push ecx            ;saving ecx register (nu e neaparat momentan)
+    push ecx            ;saving ecx register
     push edx            ;pushing parameter
     call check_if_operator
     add esp, 0x4        ;removing parameter
@@ -274,7 +314,7 @@ loop_for_poping_remaining_nodes:
 very_end:
     mov eax, [root]     ;put in eax the root
     
-    pop edx
+    pop edx             ;restoring registers
     pop ecx
     pop ebx
     leave
